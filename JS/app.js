@@ -20,6 +20,41 @@ const BLOB_ACCOUNT = "https://cw2blobstoragedec.blob.core.windows.net/";
 const CUSTOM_VISION_LOGICAPP_URL =
   "https://prod-07.switzerlandnorth.logic.azure.com:443/workflows/10f9afaa16d442eb93afd6e2af74054a/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=eOLEheMgdQfgridCbwTIOjXjqQKC-KtdMTJRB3_GFeo";
 
+const searchServiceName = "cw2aisearch";
+const indexName = "reviews-indexedDB";
+const apiVersion = "2023-11-01"
+
+
+async function searchReviews(searchText) {
+  const response = await fetch("https://prod-15.switzerlandnorth.logic.azure.com:443/workflows/4cad9f0d8d744d13b7026670b1643b31/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=ylhAWLje7MRB3iL3_xZ1wbs5ZbUGsM0-WzlcZb5Z91g", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ searchText })
+  });
+
+  const data = await response.json();
+  return data.value; // Azure Search returns results in "value"
+}
+
+async function runSearch() {
+  const text = document.getElementById("searchBox").value;
+  const results = await searchReviews(text);
+
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  results.forEach(r => {
+    container.innerHTML += `
+      <div class="result">
+        <h3>${r.homeTeam} vs ${r.awayTeam} (${r.stars}★)</h3>
+        <p>${r.comment}</p>
+        ${r.filePath ? `<img src="https://cw2blobstoragedec.blob.core.windows.net${r.filePath}" width="200" />` : ""}
+      </div>
+    `;
+  });
+}
+
+
 window._allReviews = [];
 
 // ---------------------------
