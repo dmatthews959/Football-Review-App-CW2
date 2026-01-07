@@ -66,23 +66,6 @@
   <script src="JS/bootstrap.bundle.min.js"></script>
   <script src="JS/jquery-3.6.0.min.js"></script>
   <script src="JS/app.js"></script>
-  <script type="text/javascript">
-  var appInsights=window.appInsights||function(config){
-    function r(config){t[config]=function(){var i=arguments;t.queue.push(function(){t[config].apply(t,i)})}}
-    var t={config:config},u=document,e=window,o="script",s=u.createElement(o),i,f;
-    for(s.src=config.url||"https://az416426.vo.msecnd.net/scripts/b/ai.2.min.js",u.getElementsByTagName(o)[0].parentNode.appendChild(s),
-    t.cookie=u.cookie,t.queue=[],i=["trackEvent","trackPageView","trackException","trackTrace","trackDependency","setAuthenticatedUserContext","clearAuthenticatedUserContext","flush"];
-    i.length;)r(i.pop());
-    config.disableExceptionTracking||(i="onerror",r("_"+i),f=e[i],e[i]=function(config,r,u,e,o){var s=f&&f(config,r,u,e,o);t["_"+i](config,r,u,e,o);return s});
-    return t;
-  }({
-    instrumentationKey:"73a16916-b06b-4ff1-81ea-7332aba73370"
-  });
-
-  window.appInsights=appInsights;
-  appInsights.trackPageView();
-</script>
-
 </head>
 
 <body>
