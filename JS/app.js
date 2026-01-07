@@ -242,6 +242,81 @@ function normaliseReviews(data) {
   });
 }
 
+async function fetchSingleReview(id) {
+  const response = await fetch("https://prod-08.switzerlandnorth.logic.azure.com:443/workflows/7bc6d58f6ca24324b0b9874a806b1ff4/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=eyHYNd5qus4nYXpOCnk2KGEUyuV5W2YI_TtVfmUnLvQ", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id })
+  });
+
+  if (!response.ok) {
+    console.error("Failed to fetch review:", await response.text());
+    return null;
+  }
+
+  const data = await response.json();
+  return data.value ? data.value[0] : data; // depends on your response format
+}
+
+function getReviewIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("id");
+}
+
+function normaliseSingleReview(val) {
+  const fileName = unwrapMaybeBase64(val.fileName || val.FileName || "");
+  const filePath = unwrapMaybeBase64(val.filePath || val.FilePath || "");
+  const userName = unwrapMaybeBase64(val.userName || val.UserName || "");
+  const userID = unwrapMaybeBase64(val.userID || val.UserID || "");
+  const homeTeam = unwrapMaybeBase64(val.homeTeam || "");
+  const awayTeam = unwrapMaybeBase64(val.awayTeam || "");
+  const comment = unwrapMaybeBase64(val.comment || "");
+  const stars = unwrapMaybeBase64(val.stars || "0");
+  const id = unwrapMaybeBase64(val.id || val.Id || "");
+
+  const contentType = val.contentType || val.ContentType || "";
+  const url = buildBlobUrl(filePath);
+
+  return {
+    id,
+    fileName,
+    filePath,
+    userName,
+    userID,
+    homeTeam,
+    awayTeam,
+    comment,
+    stars,
+    contentType,
+    url,
+  };
+}
+
+async function loadReview() {
+  const id = getReviewIdFromUrl();
+  if (!id) return;
+
+  const rawReview = await fetchSingleReview(id);
+  if (!rawReview) return;
+
+  const review = normaliseSingleReview(rawReview);
+
+  document.getElementById("homeTeam").textContent = review.homeTeam;
+  document.getElementById("awayTeam").textContent = review.awayTeam;
+  document.getElementById("comment").textContent = review.comment;
+  document.getElementById("stars").textContent = review.stars;
+  document.getElementById("reviewer").textContent = review.userName || "Anonymous";
+  document.getElementById("fileName").textContent = review.fileName || "N/A";
+
+  // Optional: show image
+  if (review.url) {
+    const img = document.createElement("img");
+    img.src = review.url;
+    img.width = 300;
+    document.getElementById("reviewContainer").appendChild(img);
+  }
+}
+loadReview();
 // ---------------------------
 // DELETE REVIEW
 // ---------------------------
