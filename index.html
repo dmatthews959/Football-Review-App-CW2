@@ -2,25 +2,60 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Football Match Review Application</title>
+  <title>Premier League Match Reviewer</title>
 
   <link rel="stylesheet" type="text/css" href="CSS/bootstrap.min.css">
 
   <style>
+    body {
+      background: #f8f9fa;
+      font-family: system-ui, sans-serif;
+    }
+
+    h3 {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .page-subtitle {
+      color: #6c757d;
+      margin-bottom: 30px;
+    }
+
+    .section-card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    /* Review Grid */
     #ReviewList.media-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-      align-items: start;
+      gap: 20px;
     }
 
     .media-card {
       border: 1px solid #e5e7eb;
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06);
       background: #fff;
+      transition: transform 0.15s ease;
       cursor: pointer;
+    }
+
+    .media-card:hover {
+      transform: translateY(-3px);
     }
 
     .media-thumb {
@@ -33,34 +68,53 @@
       overflow: hidden;
     }
 
-    .media-thumb img {
+    .media-thumb img,
+    .media-thumb video {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
     }
 
     .media-body {
-      padding: 10px 12px;
+      padding: 12px 14px;
       font-size: 13px;
-      line-height: 1.35;
     }
 
     .media-title {
-      display: block;
-      margin-bottom: 6px;
       font-weight: 600;
-      font-size: 14px;
-      color: #111827;
-      word-break: break-word;
+      font-size: 15px;
+      margin-bottom: 6px;
     }
 
     .review-actions {
       display: flex;
       gap: 6px;
-      margin-top: 8px;
+      margin-top: 10px;
       flex-wrap: wrap;
     }
+
+    /* Search bar */
+    #searchBox {
+      width: 100%;
+      max-width: 300px;
+      padding: 8px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      margin-right: 8px;
+    }
+
+
+    .search-media-wrapper img,
+    .search-media-wrapper video,
+    .search-media-wrapper audio {
+      max-width: 350px;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin-top: 10px;
+    }
+
   </style>
 
   <script src="JS/bootstrap.bundle.min.js"></script>
@@ -69,51 +123,48 @@
 </head>
 
 <body>
-  <div class="container">
 
-    <div class="row align-items-start mt-3">
-      <div class="col-12 text-center">
-        <h3>Football Match Review Application</h3>
-      </div>
+  <div class="container mt-4">
+
+    <div class="text-center">
+      <h3>Premier League Match Reviewer</h3>
+      <p class="page-subtitle">Submit reviews, upload media, search, and browse match insights</p>
     </div>
 
-    <!-- New Review Form -->
-    <div class="row align-items-start mt-4">
-      <div class="col-12" style="text-align: left; border-bottom:1px solid #222222;">
-        <p>Add Match Review</p>
+    <!-- Add Review Section -->
+    <div class="section-card">
+      <div class="section-title">Add Match Review</div>
 
-        <form style="font-size: 10pt;" id="newAssetForm">
-          <div class="mb-3">
-            <label class="form-label">File Name</label>
+      <form id="newAssetForm">
+        <input type="hidden" id="userID">
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Review Title</label>
             <input type="text" class="form-control" id="FileName">
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">User ID</label>
-            <input type="text" class="form-control" id="userID">
-          </div>
-
-          <div class="mb-3">
+          <div class="col-md-6 mb-3">
             <label class="form-label">User Name</label>
             <input type="text" class="form-control" id="userName">
           </div>
 
-          <div class="mb-3">
+          <div class="col-md-6 mb-3">
             <label class="form-label">Home Team</label>
-            <input type="text" class="form-control" id="homeTeam">
+            <select class="form-control" id="homeTeam"></select>
           </div>
 
-          <div class="mb-3">
+          <div class="col-md-6 mb-3">
             <label class="form-label">Away Team</label>
-            <input type="text" class="form-control" id="awayTeam">
+            <select class="form-control" id="awayTeam"></select>
           </div>
 
-          <div class="mb-3">
+          <div class="col-12 mb-3">
             <label class="form-label">Comment</label>
             <textarea class="form-control" id="comment" rows="3"></textarea>
           </div>
 
-          <div class="mb-3">
+          <div class="col-md-6 mb-3">
             <label class="form-label">Rating (1–5)</label>
             <select class="form-control" id="stars">
               <option value="1">1 - Poor</option>
@@ -124,35 +175,36 @@
             </select>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">Upload Media (image, video, or audio)</label>
-            <input 
-              type="file" 
-              class="form-control" 
-              id="UpFile"
-              accept="image/*,video/*,audio/*"
-            >
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Upload Media</label>
+            <input type="file" class="form-control" id="UpFile" accept="image/*,video/*,audio/*">
           </div>
+        </div>
 
-          <button type="button" id="subNewForm" class="btn btn-primary">Submit Review</button>
-        </form>
-
-        <input id="searchBox" placeholder="Search reviews..." />
-        <button onclick="runSearch()">Search</button>
-        <div id="results"></div>
-      </div>
+        <button type="button" id="subNewForm" class="btn btn-primary mt-2">Submit Review</button>
+      </form>
     </div>
 
-    <!-- View Reviews -->
-    <div class="row align-items-start mt-4 mb-5">
-      <div class="col-12" style="text-align: left;">
-        <div style="padding:5px;">
-          <button id="retImages" type="button" class="btn btn-primary">View Reviews</button>
-        </div>
+    <!-- Search Reviews Section -->
+    <div class="section-card">
+      <div class="section-title">Search Reviews</div>
 
-        <div id="ReviewList">
-          <h4>Please click the View Reviews button to see submitted match reviews.</h4>
-        </div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <input id="searchBox" placeholder="Search reviews..." class="form-control" style="max-width: 300px;">
+        <button onclick="runSearch()" class="btn btn-outline-secondary">Search</button>
+      </div>
+
+      <div id="results" class="mt-3"></div>
+    </div>
+
+    <!-- Browse Reviews Section -->
+    <div class="section-card">
+      <div class="section-title">Browse Reviews</div>
+
+      <button id="retImages" type="button" class="btn btn-primary mb-3">Load Reviews</button>
+
+      <div id="ReviewList">
+        <p class="text-muted">Click "Load Reviews" to view submitted match reviews.</p>
       </div>
     </div>
 
@@ -204,6 +256,70 @@
       </div>
     </div>
   </div>
+
+  <!-- Team Dropdown Logic -->
+  <script>
+    const premierLeagueTeams = [
+      "Arsenal","Aston Villa","Bournemouth","Brentford","Brighton","Chelsea",
+      "Crystal Palace","Everton","Fulham","Ipswich Town","Leicester City",
+      "Liverpool","Manchester City","Manchester United","Newcastle United",
+      "Nottingham Forest","Southampton","Tottenham Hotspur","West Ham United",
+      "Wolverhampton Wanderers"
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const homeSelect = document.getElementById("homeTeam");
+      const awaySelect = document.getElementById("awayTeam");
+
+      function populateTeams(select, excludeTeam, keepValue) {
+        const currentValue = keepValue || select.value;
+        select.innerHTML = "<option value=''>Select team</option>";
+
+        premierLeagueTeams.forEach(team => {
+          if (team !== excludeTeam) {
+            const opt = document.createElement("option");
+            opt.value = team;
+            opt.textContent = team;
+            select.appendChild(opt);
+          }
+        });
+
+        if (currentValue && currentValue !== excludeTeam) {
+          select.value = currentValue;
+        }
+      }
+
+      populateTeams(homeSelect, null);
+      populateTeams(awaySelect, null);
+
+      homeSelect.addEventListener("change", () => {
+        populateTeams(awaySelect, homeSelect.value, awaySelect.value);
+      });
+
+      awaySelect.addEventListener("change", () => {
+        populateTeams(homeSelect, awaySelect.value, homeSelect.value);
+      });
+    });
+  </script>
+
+  <!-- Auto-generate userID -->
+  <script>
+    function getOrCreateUserID() {
+      let id = localStorage.getItem("pl_user_id");
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem("pl_user_id", id);
+      }
+      return id;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const userIDField = document.getElementById("userID");
+      if (userIDField) {
+        userIDField.value = getOrCreateUserID();
+      }
+    });
+  </script>
 
 </body>
 </html>
