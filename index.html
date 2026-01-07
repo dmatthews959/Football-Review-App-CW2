@@ -125,12 +125,18 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Upload Photo (optional)</label>
-            <input type="file" class="form-control" id="UpFile">
+            <label class="form-label">Upload Media (image, video, or audio)</label>
+            <input 
+              type="file" 
+              class="form-control" 
+              id="UpFile"
+              accept="image/*,video/*,audio/*"
+            >
           </div>
 
           <button type="button" id="subNewForm" class="btn btn-primary">Submit Review</button>
         </form>
+
         <input id="searchBox" placeholder="Search reviews..." />
         <button onclick="runSearch()">Search</button>
         <div id="results"></div>

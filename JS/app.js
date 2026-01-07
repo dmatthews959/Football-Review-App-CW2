@@ -1,6 +1,8 @@
 console.log("app.js loaded");
 
-// Logic App URLs (safe to expose)
+// ---------------------------
+// LOGIC APP URLS
+// ---------------------------
 const IUPS =
   "https://prod-14.switzerlandnorth.logic.azure.com:443/workflows/c5dba29764294b10b7ffc4b8c032ef57/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=hoUSk9owHhYxELsXfb0hKq-HeW0GjZnVi0Q7gdMuv2c";
 
@@ -13,48 +15,19 @@ const DELETE_REVIEW =
 const UPDATE_REVIEW =
   "https://prod-06.switzerlandnorth.logic.azure.com:443/workflows/b04dbcc6b75340ad97c55e229da5f1e7/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=iq9F1FvFWRFCVGS_ehhQYO8LRy3ci_8N56ZqSamKOwI";
 
-// Blob Storage base URL
-const BLOB_ACCOUNT = "https://cw2blobstoragedec.blob.core.windows.net/";
-
-// ⭐ The ONLY AI endpoint now used
 const CUSTOM_VISION_LOGICAPP_URL =
   "https://prod-07.switzerlandnorth.logic.azure.com:443/workflows/10f9afaa16d442eb93afd6e2af74054a/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=eOLEheMgdQfgridCbwTIOjXjqQKC-KtdMTJRB3_GFeo";
 
-const searchServiceName = "cw2aisearch";
-const indexName = "reviews-indexedDB";
-const apiVersion = "2023-11-01"
+const SINGLE_REVIEW_URL =
+  "https://prod-08.switzerlandnorth.logic.azure.com:443/workflows/7bc6d58f6ca24324b0b9874a806b1ff4/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=eyHYNd5qus4nYXpOCnk2KGEUyuV5W2YI_TtVfmUnLvQ";
 
+const AI_SEARCH_LOGICAPP_URL =
+  "https://prod-15.switzerlandnorth.logic.azure.com:443/workflows/4cad9f0d8d744d13b7026670b1643b31/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=ylhAWLje7MRB3iL3_xZ1wbs5ZbUGsM0-WzlcZb5Z91g";
 
-async function searchReviews(searchText) {
-  const response = await fetch("https://prod-15.switzerlandnorth.logic.azure.com:443/workflows/4cad9f0d8d744d13b7026670b1643b31/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=ylhAWLje7MRB3iL3_xZ1wbs5ZbUGsM0-WzlcZb5Z91g", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ searchText })
-  });
+// Blob Storage base URL
+const BLOB_ACCOUNT = "https://cw2blobstoragedec.blob.core.windows.net/";
 
-  const data = await response.json();
-  return data.value; // Azure Search returns results in "value"
-}
-
-async function runSearch() {
-  const text = document.getElementById("searchBox").value;
-  const results = await searchReviews(text);
-
-  const container = document.getElementById("results");
-  container.innerHTML = "";
-
-  results.forEach(r => {
-    container.innerHTML += `
-      <div class="result">
-        <h3>${r.homeTeam} vs ${r.awayTeam} (${r.stars}★)</h3>
-        <p>${r.comment}</p>
-        ${r.filePath ? `<img src="https://cw2blobstoragedec.blob.core.windows.net${r.filePath}" width="200" />` : ""}
-      </div>
-    `;
-  });
-}
-
-
+// Global cache of reviews
 window._allReviews = [];
 
 // ---------------------------
@@ -66,7 +39,7 @@ $(document).ready(function () {
 });
 
 // ---------------------------
-// SUBMIT NEW REVIEW
+// SUBMIT NEW REVIEW (MEDIA-AWARE)
 // ---------------------------
 function submitNewReview() {
   const submitData = new FormData();
@@ -79,8 +52,12 @@ function submitNewReview() {
   submitData.append("comment", $("#comment").val());
   submitData.append("stars", $("#stars").val());
 
-  if ($("#UpFile")[0].files[0]) {
-    submitData.append("File", $("#UpFile")[0].files[0]);
+  const file = $("#UpFile")[0].files[0];
+
+  if (file) {
+    submitData.append("File", file);
+    submitData.append("contentType", file.type);         // image/*, video/*, audio/*
+    submitData.append("originalFileName", file.name);    // original file name
   }
 
   $.ajax({
@@ -104,7 +81,7 @@ function submitNewReview() {
 }
 
 // ---------------------------
-// GET REVIEWS
+// GET REVIEWS (LIST VIEW)
 // ---------------------------
 function getReviews() {
   const $list = $("#ReviewList");
@@ -132,48 +109,28 @@ function getReviews() {
 
       window._allReviews.forEach((review) => {
         try {
-          const {
-            id,
-            fileName,
-            filePath,
-            userName,
-            userID,
-            homeTeam,
-            awayTeam,
-            comment,
-            stars,
-            url,
-          } = review;
-
-          const fullUrl = buildBlobUrl(filePath) || url;
+          const mediaHtml = renderMedia(review.contentType, review.filePath);
 
           cards.push(`
-            <div class="media-card" onclick="goToSingleReview('${id}')" style="cursor:pointer;">
+            <div class="media-card" onclick="goToSingleReview('${review.id}')" style="cursor:pointer;">
               <div class="media-thumb">
-                ${
-                  fullUrl
-                    ? `<img src="${fullUrl}" alt="Match photo"
-                         onerror="imageFallbackToLink(this, '${fullUrl}', 'Match photo')" />`
-                    : `<div>No photo uploaded</div>`
-                }
+                ${mediaHtml || "<div>No media uploaded</div>"}
               </div>
               <div class="media-body">
-                <span class="media-title">${escapeHtml(fileName || "Football Match Review")}</span>
-                <div><strong>Home Team:</strong> ${escapeHtml(homeTeam || "(unknown)")}</div>
-                <div><strong>Away Team:</strong> ${escapeHtml(awayTeam || "(unknown)")}</div>
-                <div><strong>Comment:</strong> ${escapeHtml(comment || "")}</div>
-                <div><strong>Stars:</strong> ${escapeHtml(stars || "0")}/5</div>
-                <div>Uploaded by: ${escapeHtml(userName || "(unknown)")} (id: ${escapeHtml(userID || "(unknown)")})</div>
+                <span class="media-title">${escapeHtml(review.fileName || "Football Match Review")}</span>
+                <div><strong>Home Team:</strong> ${escapeHtml(review.homeTeam || "(unknown)")}</div>
+                <div><strong>Away Team:</strong> ${escapeHtml(review.awayTeam || "(unknown)")}</div>
+                <div><strong>Comment:</strong> ${escapeHtml(review.comment || "")}</div>
+                <div><strong>Stars:</strong> ${escapeHtml(review.stars || "0")}/5</div>
+                <div>Uploaded by: ${escapeHtml(review.userName || "(unknown)")} (id: ${escapeHtml(review.userID || "(unknown)")})</div>
 
                 <div class="review-actions">
-                  <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); openEditReview('${id}')">Edit</button>
-                  <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteReview('${id}')">Delete</button>
-                  <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); analyseReviewImage('${id}')">Analyse Image</button>
+                  <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); openEditReview('${review.id}')">Edit</button>
+                  <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteReview('${review.id}')">Delete</button>
+                  <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); analyseReviewImage('${review.id}')">Analyse Image</button>
                 </div>
 
-                <div class="cv-result" data-review-id="${id}" style="margin-top:6px;font-size:12px;color:#4b5563;"></div>
-
-                <div class="image-error"></div>
+                <div class="cv-result" data-review-id="${review.id}" style="margin-top:6px;font-size:12px;color:#4b5563;"></div>
               </div>
             </div>
           `);
@@ -182,7 +139,7 @@ function getReviews() {
           cards.push(`
             <div class="media-card">
               <div class="media-body">
-                <span class="media-title" style="colour:#b91c1c;">Error displaying this review</span>
+                <span class="media-title" style="color:#b91c1c;">Error displaying this review</span>
               </div>
             </div>
           `);
@@ -194,9 +151,43 @@ function getReviews() {
     error: (xhr, status, error) => {
       console.error("Error fetching reviews:", status, error, xhr?.responseText);
       $list.html(
-        "<p style='colour:red;'>Error loading reviews. Check console.</p>"
+        "<p style='color:red;'>Error loading reviews. Check console.</p>"
       );
     },
+  });
+}
+
+// ---------------------------
+// AI SEARCH
+// ---------------------------
+async function searchReviews(searchText) {
+  const response = await fetch(AI_SEARCH_LOGICAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ searchText }),
+  });
+
+  const data = await response.json();
+  return data.value; // Logic App returns Azure Search results in "value"
+}
+
+async function runSearch() {
+  const text = document.getElementById("searchBox").value;
+  const results = await searchReviews(text);
+
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  results.forEach((r) => {
+    const mediaHtml = renderMedia(r.contentType, r.filePath);
+
+    container.innerHTML += `
+      <div class="result">
+        <h3>${r.homeTeam} vs ${r.awayTeam} (${r.stars}★)</h3>
+        <p>${r.comment}</p>
+        ${mediaHtml}
+      </div>
+    `;
   });
 }
 
@@ -242,11 +233,14 @@ function normaliseReviews(data) {
   });
 }
 
+// ---------------------------
+// SINGLE REVIEW PAGE
+// ---------------------------
 async function fetchSingleReview(id) {
-  const response = await fetch("https://prod-08.switzerlandnorth.logic.azure.com:443/workflows/7bc6d58f6ca24324b0b9874a806b1ff4/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=eyHYNd5qus4nYXpOCnk2KGEUyuV5W2YI_TtVfmUnLvQ", {
+  const response = await fetch(SINGLE_REVIEW_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id })
+    body: JSON.stringify({ id }),
   });
 
   if (!response.ok) {
@@ -255,7 +249,7 @@ async function fetchSingleReview(id) {
   }
 
   const data = await response.json();
-  return data.value ? data.value[0] : data; // depends on your response format
+  return data.value ? data.value[0] : data; // handle both wrapped and direct
 }
 
 function getReviewIdFromUrl() {
@@ -264,35 +258,14 @@ function getReviewIdFromUrl() {
 }
 
 function normaliseSingleReview(val) {
-  const fileName = unwrapMaybeBase64(val.fileName || val.FileName || "");
-  const filePath = unwrapMaybeBase64(val.filePath || val.FilePath || "");
-  const userName = unwrapMaybeBase64(val.userName || val.UserName || "");
-  const userID = unwrapMaybeBase64(val.userID || val.UserID || "");
-  const homeTeam = unwrapMaybeBase64(val.homeTeam || "");
-  const awayTeam = unwrapMaybeBase64(val.awayTeam || "");
-  const comment = unwrapMaybeBase64(val.comment || "");
-  const stars = unwrapMaybeBase64(val.stars || "0");
-  const id = unwrapMaybeBase64(val.id || val.Id || "");
-
-  const contentType = val.contentType || val.ContentType || "";
-  const url = buildBlobUrl(filePath);
-
-  return {
-    id,
-    fileName,
-    filePath,
-    userName,
-    userID,
-    homeTeam,
-    awayTeam,
-    comment,
-    stars,
-    contentType,
-    url,
-  };
+  return normaliseReviews([val])[0];
 }
 
 async function loadReview() {
+  // Only run on reviews.html (where container exists)
+  const container = document.getElementById("reviewContainer");
+  if (!container) return;
+
   const id = getReviewIdFromUrl();
   if (!id) return;
 
@@ -305,18 +278,17 @@ async function loadReview() {
   document.getElementById("awayTeam").textContent = review.awayTeam;
   document.getElementById("comment").textContent = review.comment;
   document.getElementById("stars").textContent = review.stars;
-  document.getElementById("reviewer").textContent = review.userName || "Anonymous";
-  document.getElementById("fileName").textContent = review.fileName || "N/A";
+  document.getElementById("reviewer").textContent =
+    review.userName || "Anonymous";
+  document.getElementById("fileName").textContent =
+    review.fileName || "N/A";
 
-  // Optional: show image
-  if (review.url) {
-    const img = document.createElement("img");
-    img.src = review.url;
-    img.width = 300;
-    document.getElementById("reviewContainer").appendChild(img);
-  }
+  const mediaHtml = renderMedia(review.contentType, review.filePath);
+  container.innerHTML += mediaHtml;
 }
+
 loadReview();
+
 // ---------------------------
 // DELETE REVIEW
 // ---------------------------
@@ -381,7 +353,6 @@ function submitReviewUpdate() {
     awayTeam: $("#editAwayTeam").val(),
     comment: $("#editComment").val(),
     stars: $("#editStars").val(),
-
     fileName: existing?.fileName || "",
     filePath: existing?.filePath || "",
     contentType: existing?.contentType || "",
@@ -408,6 +379,39 @@ function submitReviewUpdate() {
 }
 
 // ---------------------------
+// MEDIA RENDERING (IMAGE / VIDEO / AUDIO)
+// ---------------------------
+function renderMedia(contentType, filePath) {
+  if (!filePath) return "";
+  const url = buildBlobUrl(filePath);
+
+  // Default to image if no contentType (for old records)
+  if (!contentType || contentType.startsWith("image/")) {
+    return `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">`;
+  }
+
+  if (contentType.startsWith("video/")) {
+    return `
+      <video width="100%" height="100%" controls>
+        <source src="${url}" type="${contentType}">
+        Your browser does not support the video tag.
+      </video>
+    `;
+  }
+
+  if (contentType.startsWith("audio/")) {
+    return `
+      <audio controls style="width:100%;">
+        <source src="${url}" type="${contentType}">
+        Your browser does not support the audio element.
+      </audio>
+    `;
+  }
+
+  return `<a href="${url}" target="_blank" rel="noopener">Download File</a>`;
+}
+
+// ---------------------------
 // UTILITY FUNCTIONS
 // ---------------------------
 function buildBlobUrl(filePath) {
@@ -417,21 +421,6 @@ function buildBlobUrl(filePath) {
   const left = (BLOB_ACCOUNT || "").replace(/\/+$/g, "");
   const right = trimmed.replace(/^\/+/g, "");
   return `${left}/${right}`;
-}
-
-function imageFallbackToLink(imgEl, url, label) {
-  const card = imgEl.closest(".media-card");
-  if (!card) return;
-  const thumb = card.querySelector(".media-thumb");
-  const errMsg = card.querySelector(".image-error");
-
-  if (thumb) {
-    thumb.innerHTML = `<a href="${url}" target="_blank" rel="noopener" class="video-link">${label || url}</a>`;
-  }
-  if (errMsg) {
-    errMsg.textContent = "Image failed to load — opened as link instead.";
-    errMsg.style.display = "block";
-  }
 }
 
 function escapeHtml(s) {
@@ -454,7 +443,7 @@ function unwrapMaybeBase64(value) {
 }
 
 // ---------------------------
-// ⭐ AI IMAGE ANALYSIS (UK English)
+// AI IMAGE ANALYSIS
 // ---------------------------
 function analyseReviewImage(id) {
   const review = window._allReviews.find((r) => r.id === id);
