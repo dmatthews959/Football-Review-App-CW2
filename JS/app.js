@@ -114,7 +114,7 @@ function getReviews() {
           cards.push(`
             <div class="media-card" onclick="goToSingleReview('${review.id}')" style="cursor:pointer;">
               <div class="media-thumb">
-                ${mediaHtml || "<div>No media uploaded</div>"}
+                ${mediaHtml}
               </div>
               <div class="media-body">
                 <span class="media-title">${escapeHtml(review.fileName || "Football Match Review")}</span>
@@ -182,12 +182,13 @@ async function runSearch() {
     const mediaHtml = renderMedia(r.contentType, r.filePath);
 
     container.innerHTML += `
-      <div class="result">
-        <h3>${r.homeTeam} vs ${r.awayTeam} (${r.stars}★)</h3>
-        <p>${r.comment}</p>
-        ${mediaHtml}
-      </div>
-    `;
+  <div class="result">
+    <h3>${r.homeTeam} vs ${r.awayTeam} (${r.stars}★)</h3>
+    <p>${r.comment}</p>
+    <div class="search-media-wrapper">
+      ${mediaHtml}
+    </div>
+  </div>`;
   });
 }
 
@@ -200,19 +201,19 @@ function goToSingleReview(id) {
 }
 
 // ---------------------------
-// NORMALISE REVIEW DATA
+// NORMALISE REVIEW DATA (LIST + SEARCH)
 // ---------------------------
 function normaliseReviews(data) {
   return data.map((val) => {
-    const fileName = unwrapMaybeBase64(val.fileName || val.FileName || "");
-    const filePath = unwrapMaybeBase64(val.filePath || val.FilePath || "");
-    const userName = unwrapMaybeBase64(val.userName || val.UserName || "");
-    const userID = unwrapMaybeBase64(val.userID || val.UserID || "");
-    const homeTeam = unwrapMaybeBase64(val.homeTeam || "");
-    const awayTeam = unwrapMaybeBase64(val.awayTeam || "");
-    const comment = unwrapMaybeBase64(val.comment || "");
-    const stars = unwrapMaybeBase64(val.stars || "0");
-    const id = unwrapMaybeBase64(val.id || val.Id || "");
+    const fileName = unwrapMaybeBase64(val.fileName ?? val.FileName ?? "");
+    const filePath = unwrapMaybeBase64(val.filePath ?? val.FilePath ?? "");
+    const userName = unwrapMaybeBase64(val.userName ?? val.UserName ?? "");
+    const userID = unwrapMaybeBase64(val.userID ?? val.UserID ?? "");
+    const homeTeam = unwrapMaybeBase64(val.homeTeam ?? val.HomeTeam ?? "");
+    const awayTeam = unwrapMaybeBase64(val.awayTeam ?? val.AwayTeam ?? "");
+    const comment = unwrapMaybeBase64(val.comment ?? val.Comment ?? "");
+    const stars = unwrapMaybeBase64(val.stars ?? val.Stars ?? "0");
+    const id = unwrapMaybeBase64(val.id ?? val.Id ?? val.ID ?? val._id ?? "");
 
     const contentType = val.contentType || val.ContentType || "";
     const url = buildBlobUrl(filePath);
@@ -234,13 +235,15 @@ function normaliseReviews(data) {
 }
 
 // ---------------------------
-// SINGLE REVIEW PAGE
+// SINGLE REVIEW PAGE (RESTORED STYLE)
 // ---------------------------
 async function fetchSingleReview(id) {
+  console.log("Fetching single review for ID:", id);
+
   const response = await fetch(SINGLE_REVIEW_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id }),
+    body: JSON.stringify({ id }),           // same as before
   });
 
   if (!response.ok) {
@@ -249,7 +252,8 @@ async function fetchSingleReview(id) {
   }
 
   const data = await response.json();
-  return data.value ? data.value[0] : data; // handle both wrapped and direct
+  console.log("Single review RAW response:", data);
+  return data.value ? data.value[0] : data; // same pattern as before
 }
 
 function getReviewIdFromUrl() {
@@ -258,35 +262,77 @@ function getReviewIdFromUrl() {
 }
 
 function normaliseSingleReview(val) {
-  return normaliseReviews([val])[0];
+  // Dedicated normaliser for single review, same style as your original
+  const fileName = unwrapMaybeBase64(val.fileName ?? val.FileName ?? "");
+  const filePath = unwrapMaybeBase64(val.filePath ?? val.FilePath ?? "");
+  const userName = unwrapMaybeBase64(val.userName ?? val.UserName ?? "");
+  const userID = unwrapMaybeBase64(val.userID ?? val.UserID ?? "");
+  const homeTeam = unwrapMaybeBase64(val.homeTeam ?? val.HomeTeam ?? "");
+  const awayTeam = unwrapMaybeBase64(val.awayTeam ?? val.AwayTeam ?? "");
+  const comment = unwrapMaybeBase64(val.comment ?? val.Comment ?? "");
+  const stars = unwrapMaybeBase64(val.stars ?? val.Stars ?? "0");
+  const id = unwrapMaybeBase64(val.id ?? val.Id ?? val.ID ?? val._id ?? "");
+
+  const contentType = val.contentType || val.ContentType || "";
+  const url = buildBlobUrl(filePath);
+
+  return {
+    id,
+    fileName,
+    filePath,
+    userName,
+    userID,
+    homeTeam,
+    awayTeam,
+    comment,
+    stars,
+    contentType,
+    url,
+  };
 }
 
 async function loadReview() {
-  // Only run on reviews.html (where container exists)
-  const container = document.getElementById("reviewContainer");
-  if (!container) return;
-
   const id = getReviewIdFromUrl();
-  if (!id) return;
+  if (!id) {
+    console.warn("No id found in URL for single review");
+    return;
+  }
 
   const rawReview = await fetchSingleReview(id);
-  if (!rawReview) return;
+  if (!rawReview) {
+    console.warn("No review returned from Logic App");
+    return;
+  }
 
   const review = normaliseSingleReview(rawReview);
+  console.log("Normalised single review:", review);
 
-  document.getElementById("homeTeam").textContent = review.homeTeam;
-  document.getElementById("awayTeam").textContent = review.awayTeam;
-  document.getElementById("comment").textContent = review.comment;
-  document.getElementById("stars").textContent = review.stars;
-  document.getElementById("reviewer").textContent =
-    review.userName || "Anonymous";
-  document.getElementById("fileName").textContent =
-    review.fileName || "N/A";
+  const homeTeamEl = document.getElementById("homeTeam");
+  const awayTeamEl = document.getElementById("awayTeam");
+  const commentEl = document.getElementById("comment");
+  const starsEl = document.getElementById("stars");
+  const reviewerEl = document.getElementById("reviewer");
+  const fileNameEl = document.getElementById("fileName");
+  const container = document.getElementById("reviewContainer");
 
+  if (!homeTeamEl || !awayTeamEl || !commentEl || !starsEl || !reviewerEl || !fileNameEl || !container) {
+    console.warn("Single review DOM elements missing");
+    return;
+  }
+
+  homeTeamEl.textContent = review.homeTeam || "";
+  awayTeamEl.textContent = review.awayTeam || "";
+  commentEl.textContent = review.comment || "";
+  starsEl.textContent = review.stars || "";
+  reviewerEl.textContent = review.userName || "Anonymous";
+  fileNameEl.textContent = review.fileName || "N/A";
+
+  // Use the same media renderer here
   const mediaHtml = renderMedia(review.contentType, review.filePath);
-  container.innerHTML += mediaHtml;
+  container.innerHTML += mediaHtml || "";
 }
 
+// call on every page; will only do something on reviews.html
 loadReview();
 
 // ---------------------------
@@ -382,34 +428,48 @@ function submitReviewUpdate() {
 // MEDIA RENDERING (IMAGE / VIDEO / AUDIO)
 // ---------------------------
 function renderMedia(contentType, filePath) {
-  if (!filePath) return "";
-  const url = buildBlobUrl(filePath);
-
-  // Default to image if no contentType (for old records)
-  if (!contentType || contentType.startsWith("image/")) {
-    return `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">`;
+  // No file path → no media
+  if (!filePath || filePath.trim() === "" || filePath === "undefined" || filePath === null) {
+    return "";
   }
 
+  const url = buildBlobUrl(filePath);
+
+  // If URL is clearly invalid → no media
+  if (!url || url.trim() === "" || url.includes("undefined")) {
+    return "";
+  }
+
+  // IMAGE
+  if (!contentType || contentType.startsWith("image/")) {
+    return `
+      <img src="${url}" 
+           onerror="this.style.display='none'" 
+           style="width:100%;height:auto;object-fit:cover;">
+    `;
+  }
+
+  // VIDEO
   if (contentType.startsWith("video/")) {
     return `
-      <video width="100%" height="100%" controls>
+      <video width="100%" controls onerror="this.style.display='none'">
         <source src="${url}" type="${contentType}">
-        Your browser does not support the video tag.
       </video>
     `;
   }
 
+  // AUDIO
   if (contentType.startsWith("audio/")) {
     return `
-      <audio controls style="width:100%;">
+      <audio controls style="width:100%;" onerror="this.style.display='none'">
         <source src="${url}" type="${contentType}">
-        Your browser does not support the audio element.
       </audio>
     `;
   }
 
-  return `<a href="${url}" target="_blank" rel="noopener">Download File</a>`;
+  return "";
 }
+
 
 // ---------------------------
 // UTILITY FUNCTIONS

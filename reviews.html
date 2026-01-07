@@ -8,26 +8,125 @@
   <script src="JS/bootstrap.bundle.min.js"></script>
   <script src="JS/jquery-3.6.0.min.js"></script>
   <script src="JS/app.js"></script>
+
+  <style>
+    body {
+      background: #f8f9fa;
+      font-family: system-ui, sans-serif;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .page-header h2 {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .page-header p {
+      color: #6c757d;
+      margin: 0;
+    }
+
+    .details-card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+
+    .details-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    .detail-row {
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+
+    .detail-label {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .media-wrapper {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .media-wrapper img,
+    .media-wrapper video,
+    .media-wrapper audio {
+      max-width: 600px;
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .back-btn {
+      margin-top: 20px;
+    }
+  </style>
 </head>
 
 <body>
 
   <div class="container mt-4">
 
-    <h2>Review Details</h2>
+    <!-- Header -->
+    <div class="page-header">
+      <h2>Review Details</h2>
+      <p class="text-muted">Full breakdown of the selected match review</p>
+    </div>
 
-    <div id="reviewContainer">
-    <p>Home Team: <span id="homeTeam"></span></p>
-    <p>Away Team: <span id="awayTeam"></span></p>
-    <p>Comment: <span id="comment"></span></p>
-    <p>Stars: <span id="stars"></span></p>
-    <p>Reviewer: <span id="reviewer"></span></p>
-    <p>File Name: <span id="fileName"></span></p>
-  </div>
+    <!-- Review Details Card -->
+    <div class="details-card">
+      <div class="details-title">Match Information</div>
+
+      <div class="detail-row">
+        <span class="detail-label">Home Team:</span>
+        <span id="homeTeam"></span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Away Team:</span>
+        <span id="awayTeam"></span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Comment:</span>
+        <span id="comment"></span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Stars:</span>
+        <span id="stars"></span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Reviewer:</span>
+        <span id="reviewer"></span>
+      </div>
+
+      <div class="detail-row" style="display:none;">
+        <span class="detail-label">File Name:</span>
+        <span id="fileName"></span>
+      </div>
 
 
-    <br>
-    <a href="index.html" class="btn btn-secondary">Back to Home</a>
+      <!-- Media gets injected here -->
+      <div id="reviewContainer" class="media-wrapper"></div>
+    </div>
+
+    <!-- Back Button -->
+    <a href="index.html" class="btn btn-secondary back-btn">Back to Home</a>
 
   </div>
 
