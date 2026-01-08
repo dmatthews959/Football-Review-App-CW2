@@ -120,7 +120,9 @@ function getReviews() {
                 <span class="media-title">${escapeHtml(review.fileName || "Football Match Review")}</span>
                 <div><strong>Home Team:</strong> ${escapeHtml(review.homeTeam || "(unknown)")}</div>
                 <div><strong>Away Team:</strong> ${escapeHtml(review.awayTeam || "(unknown)")}</div>
-                <div><strong>Comment:</strong> ${escapeHtml(review.comment || "")}</div>
+                <div><strong>Comment:</strong> 
+                  <div class="comment-snippet">${escapeHtml(review.comment || "")}</div>
+                </div>
                 <div><strong>Stars:</strong> ${escapeHtml(review.stars || "0")}/5</div>
                 <div>Uploaded by: ${escapeHtml(review.userName || "(unknown)")} (id: ${escapeHtml(review.userID || "(unknown)")})</div>
 
@@ -367,16 +369,32 @@ function deleteReview(id) {
 // ---------------------------
 function openEditReview(id) {
   const review = window._allReviews.find((r) => r.id === id);
+  const homeSelect = document.getElementById("editHomeTeam");
+  const awaySelect = document.getElementById("editAwayTeam");
+
   if (!review) {
     alert("Review not found.");
     return;
   }
 
+  $("#editFileName").val(review.fileName);
   $("#editReviewId").val(review.id);
-  $("#editHomeTeam").val(review.homeTeam);
-  $("#editAwayTeam").val(review.awayTeam);
   $("#editComment").val(review.comment);
   $("#editStars").val(review.stars);
+
+  
+  // Populate both dropdowns with correct exclusions
+  populateTeamDropdown(homeSelect, review.awayTeam, review.homeTeam);
+  populateTeamDropdown(awaySelect, review.homeTeam, review.awayTeam);
+
+  // Add the same mutual exclusion logic as the create form
+  homeSelect.addEventListener("change", () => {
+    populateTeamDropdown(awaySelect, homeSelect.value, awaySelect.value);
+  });
+
+  awaySelect.addEventListener("change", () => {
+    populateTeamDropdown(homeSelect, awaySelect.value, homeSelect.value);
+  });
 
   const modalEl = document.getElementById("editReviewModal");
   const modal = new bootstrap.Modal(modalEl);
@@ -399,7 +417,7 @@ function submitReviewUpdate() {
     awayTeam: $("#editAwayTeam").val(),
     comment: $("#editComment").val(),
     stars: $("#editStars").val(),
-    fileName: existing?.fileName || "",
+    fileName: $("#editFileName").val(),
     filePath: existing?.filePath || "",
     contentType: existing?.contentType || "",
   };
@@ -500,6 +518,23 @@ function unwrapMaybeBase64(value) {
     }
   }
   return value || "";
+}
+
+function populateTeamDropdown(select, excludeTeam, currentValue) {
+  select.innerHTML = "<option value=''>Select team</option>";
+
+  premierLeagueTeams.forEach(team => {
+    if (team !== excludeTeam) {
+      const opt = document.createElement("option");
+      opt.value = team;
+      opt.textContent = team;
+      select.appendChild(opt);
+    }
+  });
+
+  if (currentValue && currentValue !== excludeTeam) {
+    select.value = currentValue;
+  }
 }
 
 // ---------------------------

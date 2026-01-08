@@ -115,6 +115,16 @@
       margin-top: 10px;
     }
 
+    .media-body .comment-snippet {
+      display: -webkit-box;
+      -webkit-line-clamp: 4; /* show max 4 lines */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-height: 5.5em;
+    }
+
+
   </style>
 
   <script src="JS/bootstrap.bundle.min.js"></script>
@@ -223,13 +233,18 @@
           <input type="hidden" id="editReviewId">
 
           <div class="mb-3">
+            <label class="form-label">Review Title</label>
+            <input type="text" class="form-control" id="editFileName">
+          </div>
+
+          <div class="mb-3">
             <label class="form-label">Home Team</label>
-            <input type="text" class="form-control" id="editHomeTeam">
+            <select class="form-control" id="editHomeTeam"></select>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Away Team</label>
-            <input type="text" class="form-control" id="editAwayTeam">
+            <select class="form-control" id="editAwayTeam"></select>
           </div>
 
           <div class="mb-3">
